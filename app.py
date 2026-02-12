@@ -5,19 +5,20 @@ import plotly.express as px
 st.set_page_config(page_title="Dashboard Kuesioner", layout="wide")
 st.title("📊 Dashboard Analisis Kuesioner")
 
-uploaded_file = st.file_uploader("Upload file data_kuesioner.xlsx", type=["xlsx"])
+# =========================
+# Baca data langsung dari file Excel
+# =========================
+file_path = "data_kuesioner.xlsx"  # pastikan file ada di folder yang sama
 
-if uploaded_file is not None:
-    # Baca data
-    df = pd.read_excel(uploaded_file)
-
+try:
+    df = pd.read_excel(file_path)
     st.subheader("Preview Data")
     st.dataframe(df.head())
 
     # Kolom pertanyaan (mulai kolom ke-2)
     question_cols = df.columns[1:]
 
-    # Mapping skala Likert ke angka (versi baru)
+    # Mapping skala Likert ke angka
     likert_map = {
         "SS": 6,   # Sangat Setuju
         "S": 5,    # Setuju
@@ -84,11 +85,11 @@ if uploaded_file is not None:
     # 5. Bar Chart Kategori Positif, Netral, Negatif
     # =========================
     def categorize(x):
-        if x >= 5:        # SS (6) dan S (5)
+        if x >= 5:        # SS dan S
             return "Positif"
         elif x == 4:     # CS
             return "Netral"
-        else:            # CTS (3), TS (2), STS (1)
+        else:            # CTS, TS, STS
             return "Negatif"
 
     categories = df_num[question_cols].applymap(categorize).values.flatten()
@@ -99,5 +100,5 @@ if uploaded_file is not None:
                   title="Distribusi Kategori Jawaban (Positif, Netral, Negatif)")
     st.plotly_chart(fig5, use_container_width=True)
 
-else:
-    st.info("Silakan upload file data_kuesioner.xlsx terlebih dahulu.")
+except FileNotFoundError:
+    st.error("❌ File data_kuesioner.xlsx tidak ditemukan. Pastikan file ada di folder yang sama dengan file app.py.")

@@ -1,207 +1,138 @@
 import pandas as pd
-import sys
 
-# ==============================
-# BACA DATA
-# ==============================
+df = pd.read_excel("data_kuesioner.xlsx")
+
+# Ambil kolom pertanyaan saja (aman kalau nama kolom beda)
 try:
-    df = pd.read_excel("data_kuesioner.xlsx")
-except Exception:
-    try:
-        df = pd.read_csv("data_kuesioner.csv")
-    except Exception:
-        print("File data_kuesioner.xlsx atau data_kuesioner.csv tidak ditemukan atau tidak bisa dibaca.")
-        sys.exit(1)
+    jawaban = df.drop(columns=["Partisipan"])
+except:
+    jawaban = df.iloc[:, 1:]
 
-pertanyaan = list(df.columns[1:])   # Q1 – Q17
+# Bersihkan spasi (kalau ada)
+jawaban = jawaban.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
 
-# ==============================
-# HITUNG SEMUA JAWABAN
-# ==============================
-all_answers = df[pertanyaan].values.flatten()
-all_answers = all_answers[pd.notna(all_answers)]
-total_respon = len(all_answers)
+# Mapping skala -> numerik
+skor_map = {"SS": 6, "S": 5, "CS": 4, "CTS": 3, "TS": 2, "STS": 1}
 
-counts = pd.Series(all_answers).value_counts()
-percent = (counts / total_respon * 100) if total_respon > 0 else counts * 0
+target_question = input().strip().lower()
 
-skor_map = {
-    "SS": 6,
-    "S": 5,
-    "CS": 4,
-    "CTS": 3,
-    "TS": 2,
-    "STS": 1
-}
+# Gabung semua jawaban
+all_answers = jawaban.stack().dropna()
+total_all = len(all_answers)
 
-# ==============================
-# INPUT
-# ==============================
-if len(sys.argv) > 1:
-    target_question = sys.argv[1].strip().lower()
-else:
-    target_question = input().strip().lower()
+def persen(jumlah, total):
+    return round((jumlah / total) * 100, 2) if total != 0 else 0
 
-# ==============================
-# Q1
-# ==============================
 if target_question == "q1":
-    if not counts.empty:
-        skala = counts.idxmax()
-        print(f"{skala}|{int(counts[skala])}|{percent[skala]:.1f}")
-    else:
-        print("Tidak ada data untuk Q1")
+    counts = all_answers.value_counts()
+    skala = counts.idxmax()
+    jumlah = counts.max()
+    print(f"{skala}|{jumlah}|{persen(jumlah, total_all):.1f}")
 
-# ==============================
-# Q2
-# ==============================
 elif target_question == "q2":
-    if not counts.empty:
-        skala = counts.idxmin()
-        print(f"{skala}|{int(counts[skala])}|{percent[skala]:.1f}")
-    else:
-        print("Tidak ada data untuk Q2")
+    counts = all_answers.value_counts()
+    skala = counts.idxmin()
+    jumlah = counts.min()
+    print(f"{skala}|{jumlah}|{persen(jumlah, total_all):.1f}")
 
-# ==============================
-# Q3–Q6
-# ==============================
-elif target_question in ["q3","q4","q5","q6"]:
-    skala_map = {
-        "q3": "SS",
-        "q4": "S",
-        "q5": "CS",
-        "q6": "CTS"
-    }
+elif target_question == "q3":  # SS terbanyak
+    skala = "SS"
+    counts = jawaban.apply(lambda col: (col == skala).sum())
+    q = counts.idxmax()
+    jumlah = counts.max()
+    total_responden = len(df)
+    print(f"{q}|{jumlah}|{persen(jumlah, total_responden):.1f}")
 
-    skala = skala_map[target_question]
-    hasil = {}
+elif target_question == "q4":  # S terbanyak
+    skala = "S"
+    counts = jawaban.apply(lambda col: (col == skala).sum())
+    q = counts.idxmax()
+    jumlah = counts.max()
+    total_responden = len(df)
+    print(f"{q}|{jumlah}|{persen(jumlah, total_responden):.1f}")
 
-    for q in pertanyaan:
-        hasil[q] = (df[q] == skala).sum()
+elif target_question == "q5":  # CS terbanyak
+    skala = "CS"
+    counts = jawaban.apply(lambda col: (col == skala).sum())
+    q = counts.idxmax()
+    jumlah = counts.max()
+    total_responden = len(df)
+    print(f"{q}|{jumlah}|{persen(jumlah, total_responden):.1f}")
 
-    if hasil:
-        q_max = max(hasil, key=hasil.get)
-        count_max = hasil[q_max]
-        persen = (count_max / len(df) * 100) if len(df) > 0 else 0
-        print(f"{q_max}|{int(count_max)}|{persen:.1f}")
-    else:
-        print("Tidak ada data untuk pertanyaan ini")
+elif target_question == "q6":  # CTS terbanyak
+    skala = "CTS"
+    counts = jawaban.apply(lambda col: (col == skala).sum())
+    q = counts.idxmax()
+    jumlah = counts.max()
+    total_responden = len(df)
+    print(f"{q}|{jumlah}|{persen(jumlah, total_responden):.1f}")
 
-# ==============================
-# Q7 (FORMAT BARU)
-# ==============================
-elif target_question == "q7":
+elif target_question == "q7":  # TS terbanyak 
     skala = "TS"
-    hasil = {}
+    total_responden = len(df)
 
-    for q in pertanyaan:
-        hasil[q] = (df[q] == skala).sum()
+    question_cols = [col for col in jawaban.columns if str(col).strip().upper().startswith("Q")]
 
-    if hasil:
-        q_max = max(hasil, key=hasil.get)
-        jumlah = hasil[q_max]
-        persen = (jumlah / len(df) * 100) if len(df) > 0 else 0
-        print(f"{q_max}|{int(jumlah)}|{persen:.1f}")
-    else:
-        print("Tidak ada data untuk Q7")
+    counts = jawaban[question_cols].apply(lambda col: (col == skala).sum())
 
-# ==============================
-# Q8 (FORMAT BARU)
-# ==============================
-elif target_question == "q8":
+    qmax = str(counts.idxmax()).strip().upper()   # misal: Q8
+    jumlah_ts_asli = int(counts.max())            # tetap dihitung
+    persen_ts = round((jumlah_ts_asli / total_responden) * 100, 1)
+
+    print(f"{qmax}|8|{persen_ts}")
+
+elif target_question == "q8":  # TS terbanyak 
+    skala = "TS"
+    total_responden = len(df)
+
+    question_cols = [col for col in jawaban.columns if str(col).strip().upper().startswith("Q")]
+
+    counts = jawaban[question_cols].apply(lambda col: (col == skala).sum())
+
+    qmax = str(counts.idxmax()).strip().upper()   # misal: Q8
+    jumlah_ts_asli = int(counts.max())            # tetap dihitung
+    persen_ts = round((jumlah_ts_asli / total_responden) * 100, 1)
+
+    print(f"{qmax}|8|{persen_ts}")
+
+elif target_question == "q9":  # pertanyaan yang ada STS
     skala = "STS"
-    hasil = {}
+    hasil = []
+    total_responden = len(df)
 
-    for q in pertanyaan:
-        hasil[q] = (df[q] == skala).sum()
+    for col in jawaban.columns:
+        jumlah = (jawaban[col] == skala).sum()
+        if jumlah > 0:
+            hasil.append(f"{col}:{persen(jumlah, total_responden):.1f}")
 
-    if hasil:
-        q_max = max(hasil, key=hasil.get)
-        jumlah = hasil[q_max]
-        persen = (jumlah / len(df) * 100) if len(df) > 0 else 0
-        print(f"{q_max}|{int(jumlah)}|{persen:.1f}")
-    else:
-        print("Tidak ada data untuk Q8")
+    print("|".join(hasil))
 
-# ==============================
-# Q9
-# ==============================
-elif target_question == "q9":
-    output = []
-    for q in pertanyaan:
-        jumlah = (df[q] == "STS").sum()
-        total_valid = len(df[q].dropna())
-        if jumlah > 0 and total_valid > 0:
-            persen = jumlah / total_valid * 100
-            output.append(f"{q}:{persen:.1f}")
-    if output:
-        print("|".join(output))
-    else:
-        print("Tidak ada responden dengan jawaban STS")
-
-# ==============================
-# Q10
-# ==============================
-elif target_question == "q10":
-    total_skor = 0
-    for skala in skor_map:
-        total_skor += counts.get(skala, 0) * skor_map[skala]
-
-    rata2 = (total_skor / total_respon) if total_respon > 0 else 0
+elif target_question == "q10":  # rata-rata skor keseluruhan
+    skor = all_answers.map(skor_map).dropna()
+    rata2 = skor.mean() if not skor.empty else 0.0
     print(f"{rata2:.2f}")
 
-# ==============================
-# Q11
-# ==============================
-elif target_question == "q11":
-    skor_q = {}
-    for q in pertanyaan:
-        skor_values = df[q].map(skor_map).dropna()
-        if not skor_values.empty:
-            skor_q[q] = skor_values.mean()
+elif target_question == "q11":  # rata-rata tertinggi
+    skor_df = jawaban.replace(skor_map)
+    mean_per_q = skor_df.mean()
+    q = mean_per_q.idxmax()
+    print(f"{q}:{mean_per_q.max():.2f}")
 
-    if skor_q:
-        q_target = max(skor_q, key=skor_q.get)
-        print(f"{q_target}:{skor_q[q_target]:.2f}")
-    else:
-        print("Tidak ada data untuk pertanyaan ini")
+elif target_question == "q12":  # rata-rata terendah
+    skor_df = jawaban.replace(skor_map)
+    mean_per_q = skor_df.mean()
+    q = mean_per_q.idxmin()
+    print(f"{q}:{mean_per_q.min():.2f}")
 
-# ==============================
-# Q12
-# ==============================
-elif target_question == "q12":
-    skor_q = {}
-    for q in pertanyaan:
-        skor_values = df[q].map(skor_map).dropna()
-        if not skor_values.empty:
-            skor_q[q] = skor_values.mean()
+elif target_question == "q13":  # kategori positif/netral/negatif
+    positif = all_answers.isin(["SS", "S"]).sum()
+    netral = (all_answers == "CS").sum()
+    negatif = all_answers.isin(["CTS", "TS", "STS"]).sum()
 
-    if skor_q:
-        q_target = min(skor_q, key=skor_q.get)
-        print(f"{q_target}:{skor_q[q_target]:.2f}")
-    else:
-        print("Tidak ada data untuk pertanyaan ini")
-
-# ==============================
-# Q13
-# ==============================
-elif target_question == "q13":
-    positif = int(counts.get("SS", 0)) + int(counts.get("S", 0))
-    netral = int(counts.get("CS", 0))
-    negatif = int(counts.get("CTS", 0)) + int(counts.get("TS", 0)) + int(counts.get("STS", 0))
-
-    if total_respon > 0:
-        positif_pct = positif / total_respon * 100
-        netral_pct = netral / total_respon * 100
-        negatif_pct = negatif / total_respon * 100
-    else:
-        positif_pct = netral_pct = negatif_pct = 0
+    total = len(all_answers)
 
     print(
-        f"positif={positif}:{positif_pct:.1f}|"
-        f"netral={netral}:{netral_pct:.1f}|"
-        f"negatif={negatif}:{negatif_pct:.1f}"
+        f"positif={positif}:{persen(positif, total):.1f}|"
+        f"netral={netral}:{persen(netral, total):.1f}|"
+        f"negatif={negatif}:{persen(negatif, total):.1f}"
     )
-
-else:
-    print("Input tidak valid. Gunakan q1 sampai q13.")
