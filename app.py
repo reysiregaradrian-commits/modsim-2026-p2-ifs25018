@@ -5,111 +5,98 @@ import plotly.express as px
 st.set_page_config(page_title="Dashboard Kuesioner", layout="wide")
 st.title("📊 Dashboard Analisis Kuesioner")
 
-# =========================
-# Set File Path
-# =========================
-file_path = "data_kuesioner.xlsx"
+uploaded_file = st.file_uploader("Upload file data_kuesioner.xlsx", type=["xlsx"])
 
-st.info("Klik tombol di bawah untuk memuat dan memproses data kuesioner.")
+if uploaded_file is not None:
+    # Baca data
+    df = pd.read_excel(uploaded_file)
+    st.subheader("Preview Data")
+    st.dataframe(df.head())
 
-# Tombol untuk load data
-load_data = st.button("📥 Load & Proses Data")
+    # Kolom pertanyaan (mulai kolom ke-2)
+    question_cols = df.columns[1:]
 
-if load_data:
-    try:
-        df = pd.read_excel(file_path)
-        st.success("✅ Data berhasil dimuat!")
+    # Mapping skala Likert ke angka (SS, S, CS, CTS, TS, STS)
+    likert_map = {
+        "SS": 6,   # Sangat Setuju
+        "S": 5,    # Setuju
+        "CS": 4,   # Cukup Setuju
+        "CTS": 3,  # Cukup Tidak Setuju
+        "TS": 2,   # Tidak Setuju
+        "STS": 1   # Sangat Tidak Setuju
+    }
 
-        st.subheader("Preview Data")
-        st.dataframe(df.head())
+    df_num = df.copy()
+    for col in question_cols:
+        df_num[col] = df_num[col].map(likert_map)
 
-        # Kolom pertanyaan (mulai kolom ke-2)
-        question_cols = df.columns[1:]
+    # =========================
+    # 1. Bar Chart Distribusi Jawaban Keseluruhan
+    # =========================
+    all_answers = df_num[question_cols].values.flatten()
+    dist_all = pd.Series(all_answers).value_counts().sort_index().reset_index()
+    dist_all.columns = ["Skor", "Frekuensi"]
 
-        # Mapping skala Likert ke angka
-        likert_map = {
-            "SS": 6,   # Sangat Setuju
-            "S": 5,    # Setuju
-            "CS": 4,   # Cukup Setuju
-            "CTS": 3,  # Cukup Tidak Setuju
-            "TS": 2,   # Tidak Setuju
-            "STS": 1   # Sangat Tidak Setuju
-        }
+    fig1 = px.bar(dist_all, x="Skor", y="Frekuensi",
+                  title="Distribusi Jawaban Keseluruhan")
+    st.plotly_chart(fig1, use_container_width=True)
 
-        df_num = df.copy()
-        for col in question_cols:
-            df_num[col] = df_num[col].map(likert_map)
+    # =========================
+    # 2. Pie Chart Proporsi Jawaban Keseluruhan
+    # =========================
+    fig2 = px.pie(dist_all, names="Skor", values="Frekuensi",
+                  title="Proporsi Jawaban Keseluruhan")
+    st.plotly_chart(fig2, use_container_width=True)
 
-        # =========================
-        # 1. Bar Chart Distribusi Jawaban Keseluruhan
-        # =========================
-        all_answers = df_num[question_cols].values.flatten()
-        dist_all = pd.Series(all_answers).value_counts().sort_index().reset_index()
-        dist_all.columns = ["Skor", "Frekuensi"]
+    # =========================
+    # 3. Stacked Bar (Set Bar) Distribusi Jawaban per Pertanyaan
+    # =========================
+    dist_per_question = df_num[question_cols].apply(lambda x: x.value_counts()).fillna(0).sort_index()
+    dist_per_question = dist_per_question.T.reset_index().rename(columns={"index": "Pertanyaan"})
+    dist_melt = dist_per_question.melt(
+        id_vars="Pertanyaan",
+        var_name="Skor",
+        value_name="Frekuensi"
+    )
 
-        fig1 = px.bar(dist_all, x="Skor", y="Frekuensi",
-                      title="Distribusi Jawaban Keseluruhan")
-        st.plotly_chart(fig1, use_container_width=True)
+    fig3 = px.bar(
+        dist_melt,
+        x="Pertanyaan",
+        y="Frekuensi",
+        color="Skor",
+        title="Distribusi Jawaban per Pertanyaan (Stacked Bar / Set Bar)",
+        barmode="stack"
+    )
+    st.plotly_chart(fig3, use_container_width=True)
 
-        # =========================
-        # 2. Pie Chart Proporsi Jawaban Keseluruhan
-        # =========================
-        fig2 = px.pie(dist_all, names="Skor", values="Frekuensi",
-                      title="Proporsi Jawaban Keseluruhan")
-        st.plotly_chart(fig2, use_container_width=True)
+    # =========================
+    # 4. Bar Chart Rata-rata Skor per Pertanyaan
+    # =========================
+    avg_scores = df_num[question_cols].mean().reset_index()
+    avg_scores.columns = ["Pertanyaan", "Rata-rata Skor"]
 
-        # =========================
-        # 3. Stacked Bar Distribusi Jawaban per Pertanyaan
-        # =========================
-        dist_per_question = df_num[question_cols].apply(lambda x: x.value_counts()).fillna(0).sort_index()
-        dist_per_question = dist_per_question.T.reset_index().rename(columns={"index": "Pertanyaan"})
-        dist_melt = dist_per_question.melt(
-            id_vars="Pertanyaan",
-            var_name="Skor",
-            value_name="Frekuensi"
-        )
+    fig4 = px.bar(avg_scores, x="Pertanyaan", y="Rata-rata Skor",
+                  title="Rata-rata Skor per Pertanyaan")
+    st.plotly_chart(fig4, use_container_width=True)
 
-        fig3 = px.bar(
-            dist_melt,
-            x="Pertanyaan",
-            y="Frekuensi",
-            color="Skor",
-            title="Distribusi Jawaban per Pertanyaan (Stacked Bar)",
-            barmode="stack"
-        )
-        st.plotly_chart(fig3, use_container_width=True)
+    # =========================
+    # 5. Bar Chart Kategori Positif, Netral, Negatif
+    # =========================
+    def categorize(x):
+        if x >= 5:        # SS (6) dan S (5)
+            return "Positif"
+        elif x == 4:     # CS
+            return "Netral"
+        else:            # CTS (3), TS (2), STS (1)
+            return "Negatif"
 
-        # =========================
-        # 4. Bar Chart Rata-rata Skor per Pertanyaan
-        # =========================
-        avg_scores = df_num[question_cols].mean().reset_index()
-        avg_scores.columns = ["Pertanyaan", "Rata-rata Skor"]
+    categories = df_num[question_cols].applymap(categorize).values.flatten()
+    cat_dist = pd.Series(categories).value_counts().reset_index()
+    cat_dist.columns = ["Kategori", "Frekuensi"]
 
-        fig4 = px.bar(avg_scores, x="Pertanyaan", y="Rata-rata Skor",
-                      title="Rata-rata Skor per Pertanyaan")
-        st.plotly_chart(fig4, use_container_width=True)
-
-        # =========================
-        # 5. Bar Chart Kategori Positif, Netral, Negatif
-        # =========================
-        def categorize(x):
-            if x >= 5:
-                return "Positif"
-            elif x == 4:
-                return "Netral"
-            else:
-                return "Negatif"
-
-        categories = df_num[question_cols].applymap(categorize).values.flatten()
-        cat_dist = pd.Series(categories).value_counts().reset_index()
-        cat_dist.columns = ["Kategori", "Frekuensi"]
-
-        fig5 = px.bar(cat_dist, x="Kategori", y="Frekuensi",
-                      title="Distribusi Kategori Jawaban (Positif, Netral, Negatif)")
-        st.plotly_chart(fig5, use_container_width=True)
-
-    except FileNotFoundError:
-        st.error("❌ File data_kuesioner.xlsx tidak ditemukan. Pastikan file ada di folder yang sama dengan app.py.")
+    fig5 = px.bar(cat_dist, x="Kategori", y="Frekuensi",
+                  title="Distribusi Kategori Jawaban (Positif, Netral, Negatif)")
+    st.plotly_chart(fig5, use_container_width=True)
 
 else:
-    st.warning("⚠️ Data belum dimuat. Klik tombol **Load & Proses Data** untuk mulai analisis.")
+    st.info("Silakan upload file data_kuesioner.xlsx terlebih dahulu.")
