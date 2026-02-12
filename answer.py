@@ -63,16 +63,14 @@ elif target_question == "q2":
         print("Tidak ada data untuk Q2")
 
 # ==============================
-# Q3–Q8
+# Q3–Q6
 # ==============================
-elif target_question in ["q3","q4","q5","q6","q7","q8"]:
+elif target_question in ["q3","q4","q5","q6"]:
     skala_map = {
         "q3": "SS",
         "q4": "S",
         "q5": "CS",
-        "q6": "CTS",
-        "q7": "TS",
-        "q8": "STS"
+        "q6": "CTS"
     }
 
     skala = skala_map[target_question]
@@ -88,6 +86,42 @@ elif target_question in ["q3","q4","q5","q6","q7","q8"]:
         print(f"{q_max}|{int(count_max)}|{persen:.1f}")
     else:
         print("Tidak ada data untuk pertanyaan ini")
+
+# ==============================
+# Q7 (FORMAT BARU)
+# ==============================
+elif target_question == "q7":
+    skala = "TS"
+    hasil = {}
+
+    for q in pertanyaan:
+        hasil[q] = (df[q] == skala).sum()
+
+    if hasil:
+        q_max = max(hasil, key=hasil.get)
+        jumlah = hasil[q_max]
+        persen = (jumlah / len(df) * 100) if len(df) > 0 else 0
+        print(f"{q_max}|{int(jumlah)}|{persen:.1f}")
+    else:
+        print("Tidak ada data untuk Q7")
+
+# ==============================
+# Q8 (FORMAT BARU)
+# ==============================
+elif target_question == "q8":
+    skala = "STS"
+    hasil = {}
+
+    for q in pertanyaan:
+        hasil[q] = (df[q] == skala).sum()
+
+    if hasil:
+        q_max = max(hasil, key=hasil.get)
+        jumlah = hasil[q_max]
+        persen = (jumlah / len(df) * 100) if len(df) > 0 else 0
+        print(f"{q_max}|{int(jumlah)}|{persen:.1f}")
+    else:
+        print("Tidak ada data untuk Q8")
 
 # ==============================
 # Q9
@@ -106,7 +140,7 @@ elif target_question == "q9":
         print("Tidak ada responden dengan jawaban STS")
 
 # ==============================
-# Q10 (2 angka koma)
+# Q10
 # ==============================
 elif target_question == "q10":
     total_skor = 0
@@ -117,7 +151,7 @@ elif target_question == "q10":
     print(f"{rata2:.2f}")
 
 # ==============================
-# Q11 (2 angka koma)
+# Q11
 # ==============================
 elif target_question == "q11":
     skor_q = {}
@@ -133,7 +167,7 @@ elif target_question == "q11":
         print("Tidak ada data untuk pertanyaan ini")
 
 # ==============================
-# Q12 (2 angka koma)
+# Q12
 # ==============================
 elif target_question == "q12":
     skor_q = {}
@@ -149,7 +183,7 @@ elif target_question == "q12":
         print("Tidak ada data untuk pertanyaan ini")
 
 # ==============================
-# Q13 (1 angka koma)
+# Q13
 # ==============================
 elif target_question == "q13":
     positif = int(counts.get("SS", 0)) + int(counts.get("S", 0))
